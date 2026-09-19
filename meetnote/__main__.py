@@ -1,0 +1,3 @@
+import meetnote
+
+meetnote.main()
