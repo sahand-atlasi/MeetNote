@@ -70,9 +70,7 @@ class MeetingScreen(BoxLayout):
             size_hint_y=None,
             height=50,
         )
-        choose_button.bind(
-            on_press=lambda _: self.select_file(chooser, popup)
-        )
+        choose_button.bind(on_press=lambda _: self.select_file(chooser, popup))
 
         layout = BoxLayout(orientation="vertical")
         layout.add_widget(chooser)
