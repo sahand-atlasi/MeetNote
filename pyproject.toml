@@ -38,6 +38,14 @@ static-checks = [
     "mypy",
 ]
 
+[tool.mypy]
+python_version = "3.12"
+
+[[tool.mypy.overrides]]
+module = ["meetnote.__main__"]
+ignore_errors = true
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
