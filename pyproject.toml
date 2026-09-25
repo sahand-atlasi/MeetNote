@@ -42,7 +42,7 @@ static-checks = [
 python_version = "3.12"
 
 [[tool.mypy.overrides]]
-module = ["meetnote.__main__"]
+module = ["meetnote.__main__", "meetnote.ui.*"]
 ignore_errors = true
 
 [build-system]
