@@ -11,7 +11,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 # update the Python versions in .github/workflows/check.yml if you change this
-python = ">= 3.9.0 < 4.0.0"
+python = ">= 3.12.0 < 3.14.0"
 kivy = ">=2.3,<3.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -42,7 +42,7 @@ static-checks = [
 python_version = "3.12"
 
 [[tool.mypy.overrides]]
-module = ["meetnote.__main__"]
+module = ["meetnote.__main__", "meetnote.ui.*"]
 ignore_errors = true
 
 [build-system]
