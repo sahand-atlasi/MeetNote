@@ -24,10 +24,8 @@ jobs:
           fetch-depth: 0 # all history
 
       - name: Install Poetry
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install poetry
-
+        run: python -m pip install poetry==2.4.3
+        
       - name: Restore Development Environment
         run: poetry install
 
@@ -67,9 +65,6 @@ jobs:
           - windows-latest
           - macos-latest
         python-version:
-          - '3.9'
-          - '3.10'
-          - '3.11'
           - '3.12'
           - '3.13'
     runs-on: ${{ matrix.os }}
@@ -98,12 +93,13 @@ jobs:
 
   deploy:
     name: Deploy
-    permissions: 
+    needs:
+      - test
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/deploy.yml
+    permissions:
       contents: write
       packages: write
       issues: write
       pull-requests: write
-    needs:
-      - test
-    uses: ./.github/workflows/deploy.yml
     secrets: inherit
