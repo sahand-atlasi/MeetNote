@@ -27,11 +27,6 @@ jobs:
 
       - name: Release
         shell: bash
-        run: |
-          npm install
-          npx semantic-release
+        run: poetry run semantic-release
         env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          RELEASE_TEST_PYPI: ${{ github.event.repository.is_template || contains(github.repository, 'template') }}
-          RELEASE_DRY_RUN: ${{ steps.skip_release.outputs.skip == 'true' || (github.ref_name != 'master' && github.ref_name != 'main') }}
+            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
