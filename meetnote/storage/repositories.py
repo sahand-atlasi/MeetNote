@@ -50,6 +50,16 @@ class MeetingRepository:
 
         return [dict(row) for row in rows]
 
+    def delete(self, meeting_id: int) -> None:
+        with connect(self.database_path) as connection:
+            connection.execute(
+                """
+                DELETE FROM meetings
+                WHERE id = ?
+                """,
+                (meeting_id,),
+            )
+
 
 class ActionItemRepository:
     def __init__(self, database_path: Path) -> None:
@@ -97,6 +107,27 @@ class ActionItemRepository:
                 """
                 UPDATE action_items
                 SET status = 'done'
+                WHERE id = ?
+                """,
+                (action_item_id,),
+            )
+
+    def mark_open(self, action_item_id: int) -> None:
+        with connect(self.database_path) as connection:
+            connection.execute(
+                """
+                UPDATE action_items
+                SET status = 'open'
+                WHERE id = ?
+                """,
+                (action_item_id,),
+            )
+
+    def delete(self, action_item_id: int) -> None:
+        with connect(self.database_path) as connection:
+            connection.execute(
+                """
+                DELETE FROM action_items
                 WHERE id = ?
                 """,
                 (action_item_id,),

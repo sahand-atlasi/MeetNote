@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS action_items (
     owner TEXT,
     status TEXT NOT NULL DEFAULT 'open',
     due_date TEXT,
-    FOREIGN KEY (meeting_id) REFERENCES meetings(id)
+    FOREIGN KEY (meeting_id)
+    REFERENCES meetings(id)
+    ON DELETE CASCADE
 );
 """
 
