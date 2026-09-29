@@ -23,9 +23,9 @@ def test_service_creates_meeting_with_cleaned_values(
 
     meetings = service.list_meetings()
 
-    assert meeting_id == meetings[0]["id"]
-    assert meetings[0]["title"] == "Planning meeting"
-    assert meetings[0]["notes"] == "Discuss release"
+    assert meeting_id == meetings[0].id
+    assert meetings[0].title == "Planning meeting"
+    assert meetings[0].notes == "Discuss release"
 
 
 def test_service_rejects_empty_meeting_title(
@@ -50,9 +50,9 @@ def test_service_creates_and_completes_action_item(
 
     items = service.list_action_items(meeting_id)
 
-    assert items[0]["description"] == "Send the minutes"
-    assert items[0]["owner"] == "Sahand"
-    assert items[0]["status"] == "done"
+    assert items[0].description == "Send the minutes"
+    assert items[0].owner == "Sahand"
+    assert items[0].status == "done"
 
 
 def test_service_rejects_empty_action_item(

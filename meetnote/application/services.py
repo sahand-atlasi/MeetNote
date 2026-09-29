@@ -4,6 +4,7 @@ from meetnote.storage.repositories import (
     ActionItemRepository,
     MeetingRepository,
 )
+from meetnote.domain.models import ActionItem, Meeting
 
 
 class MeetingService:
@@ -22,7 +23,7 @@ class MeetingService:
             notes=notes.strip(),
         )
 
-    def list_meetings(self) -> list[dict]:
+    def list_meetings(self) -> list[Meeting]:
         return self.meetings.list_all()
 
     def delete_meeting(self, meeting_id: int) -> None:
@@ -49,7 +50,7 @@ class MeetingService:
             due_date=due_date,
         )
 
-    def list_action_items(self, meeting_id: int) -> list[dict]:
+    def list_action_items(self, meeting_id: int) -> list[ActionItem]:
         return self.action_items.list_for_meeting(meeting_id)
 
     def mark_action_item_done(self, action_item_id: int) -> None:

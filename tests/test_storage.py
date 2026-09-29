@@ -27,8 +27,8 @@ def test_create_and_read_meeting(database_path: Path) -> None:
     meeting = repository.get(meeting_id)
 
     assert meeting is not None
-    assert meeting["title"] == "Planning meeting"
-    assert meeting["notes"] == "Discussed the next release."
+    assert meeting.title == "Planning meeting"
+    assert meeting.notes == "Discussed the next release."
 
 
 def test_create_and_list_action_items(database_path: Path) -> None:
@@ -46,9 +46,9 @@ def test_create_and_list_action_items(database_path: Path) -> None:
     items = action_items.list_for_meeting(meeting_id)
 
     assert len(items) == 1
-    assert items[0]["description"] == "Prepare the release notes"
-    assert items[0]["owner"] == "Sahand"
-    assert items[0]["status"] == "open"
+    assert items[0].description == "Prepare the release notes"
+    assert items[0].owner == "Sahand"
+    assert items[0].status == "open"
 
 
 def test_mark_action_item_done(database_path: Path) -> None:
@@ -65,7 +65,7 @@ def test_mark_action_item_done(database_path: Path) -> None:
 
     items = action_items.list_for_meeting(meeting_id)
 
-    assert items[0]["status"] == "done"
+    assert items[0].status == "done"
 
 
 def test_action_item_requires_existing_meeting(database_path: Path) -> None:
@@ -111,7 +111,7 @@ def test_mark_action_item_open(database_path: Path) -> None:
 
     items = action_items.list_for_meeting(meeting_id)
 
-    assert items[0]["status"] == "open"
+    assert items[0].status == "open"
 
 
 def test_delete_action_item(database_path: Path) -> None:

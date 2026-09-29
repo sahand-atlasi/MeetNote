@@ -1,4 +1,9 @@
 from dataclasses import dataclass
+from typing import Literal
+
+
+MeetingStatus = Literal["active", "archived"]
+ActionItemStatus = Literal["open", "done"]
 
 
 @dataclass(frozen=True)
@@ -15,5 +20,5 @@ class ActionItem:
     meeting_id: int
     description: str
     owner: str | None
-    status: str
+    status: ActionItemStatus
     due_date: str | None
