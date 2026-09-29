@@ -2,6 +2,7 @@
 name = "meetnote"
 packages = [
     { include = "meetnote" },
+    { include = "meetnote/storage" },
 ]
 version = "2.4.1"
 description = "A template for Python projects, using Poetry"
