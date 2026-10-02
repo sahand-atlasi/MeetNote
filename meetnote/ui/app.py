@@ -8,15 +8,25 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
 
+from meetnote.application.services import MeetingService
+from meetnote.config import default_database_path
+from meetnote.storage.database import initialize_database
+
 
 class MeetingScreen(BoxLayout):
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        service: MeetingService,
+        **kwargs,
+    ):
         super().__init__(
             orientation="vertical",
             spacing=10,
             padding=20,
             **kwargs,
         )
+
+        self.service = service
 
         self.title_input = TextInput(
             hint_text="Enter meeting title",
@@ -106,11 +116,25 @@ class MeetingScreen(BoxLayout):
             self.status_label.text = "Status: select an audio or video file"
             return
 
-        self.status_label.text = "Status: meeting submitted"
+        try:
+            meeting_id = self.service.create_meeting(
+                title=title,
+                notes=f"Recording: {file_path}",
+            )
+        except ValueError as error:
+            self.status_label.text = f"Status: {error}"
+            return
+
+        self.status_label.text = f"Status: meeting saved with ID {meeting_id}"
 
 
 class MeetNoteApp(App):
     title = "MeetNote"
 
     def build(self):
-        return MeetingScreen()
+        database_path = default_database_path()
+        initialize_database(database_path)
+
+        service = MeetingService(database_path)
+
+        return MeetingScreen(service=service)
