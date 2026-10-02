@@ -28,6 +28,18 @@ class MeetingScreen(BoxLayout):
         )
 
         self.service = service
+        self.selected_meeting_id: int | None = None
+        self.action_items_layout = BoxLayout(
+            orientation="vertical",
+            spacing=5,
+            size_hint_y=None,
+        )
+        self.action_items_layout.bind(
+            minimum_height=self.action_items_layout.setter("height")
+        )
+
+        action_items_scroll = ScrollView(size_hint_y=None, height=180)
+        action_items_scroll.add_widget(self.action_items_layout)
 
         self.title_input = TextInput(
             hint_text="Enter meeting title",
@@ -95,10 +107,19 @@ class MeetingScreen(BoxLayout):
                 height=40,
             )
         )
+        self.add_widget(
+            Label(
+                text="Action items",
+                size_hint_y=None,
+                height=40,
+            )
+        )
+        self.add_widget(action_items_scroll)
         self.add_widget(meetings_scroll)
         self.add_widget(refresh_button)
 
         self.refresh_meetings()
+        self.refresh_action_items()
 
     def open_file_chooser(self, _button):
         chooser = FileChooserListView(
@@ -163,15 +184,18 @@ class MeetingScreen(BoxLayout):
 
         meetings = self.service.list_meetings()
 
-        if not meetings:
-            self.meetings_layout.add_widget(
-                Label(
-                    text="No saved meetings",
-                    size_hint_y=None,
-                    height=40,
+        for meeting in meetings:
+            meeting_button = Button(
+                text=(f"{meeting.id}: {meeting.title}\n{meeting.created_at}"),
+                size_hint_y=None,
+                height=60,
+            )
+            meeting_button.bind(
+                on_press=lambda _button, meeting_id=meeting.id: self.select_meeting(
+                    meeting_id
                 )
             )
-            return
+            self.meetings_layout.add_widget(meeting_button)
 
         for meeting in meetings:
             meeting_label = Label(
@@ -189,6 +213,44 @@ class MeetingScreen(BoxLayout):
                 )
             )
             self.meetings_layout.add_widget(meeting_label)
+
+    def select_meeting(self, meeting_id: int) -> None:
+        self.selected_meeting_id = meeting_id
+        self.refresh_action_items()
+        self.status_label.text = f"Status: selected meeting {meeting_id}"
+
+    def refresh_action_items(self) -> None:
+        self.action_items_layout.clear_widgets()
+
+        if self.selected_meeting_id is None:
+            self.action_items_layout.add_widget(
+                Label(
+                    text="Select a meeting to view its action items",
+                    size_hint_y=None,
+                    height=40,
+                )
+            )
+            return
+
+        items = self.service.list_action_items(self.selected_meeting_id)
+
+        if not items:
+            self.action_items_layout.add_widget(
+                Label(
+                    text="No action items",
+                    size_hint_y=None,
+                    height=40,
+                )
+            )
+            return
+
+        for item in items:
+            item_label = Label(
+                text=(f"{item.description} — {item.status}"),
+                size_hint_y=None,
+                height=40,
+            )
+            self.action_items_layout.add_widget(item_label)
 
 
 class MeetNoteApp(App):
