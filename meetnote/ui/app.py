@@ -7,6 +7,7 @@ from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
+from kivy.uix.scrollview import ScrollView
 
 from meetnote.application.services import MeetingService
 from meetnote.config import default_database_path
@@ -47,6 +48,25 @@ class MeetingScreen(BoxLayout):
             height=40,
         )
 
+        self.meetings_layout = BoxLayout(
+            orientation="vertical",
+            spacing=5,
+            size_hint_y=None,
+        )
+        self.meetings_layout.bind(minimum_height=self.meetings_layout.setter("height"))
+
+        meetings_scroll = ScrollView(
+            size_hint_y=1,
+        )
+        meetings_scroll.add_widget(self.meetings_layout)
+
+        refresh_button = Button(
+            text="Refresh saved meetings",
+            size_hint_y=None,
+            height=50,
+        )
+        refresh_button.bind(on_press=self.refresh_meetings)
+
         select_file_button = Button(
             text="Select audio or video file",
             size_hint_y=None,
@@ -68,6 +88,17 @@ class MeetingScreen(BoxLayout):
         self.add_widget(self.selected_file_label)
         self.add_widget(submit_button)
         self.add_widget(self.status_label)
+        self.add_widget(
+            Label(
+                text="Saved meetings",
+                size_hint_y=None,
+                height=40,
+            )
+        )
+        self.add_widget(meetings_scroll)
+        self.add_widget(refresh_button)
+
+        self.refresh_meetings()
 
     def open_file_chooser(self, _button):
         chooser = FileChooserListView(
@@ -126,6 +157,38 @@ class MeetingScreen(BoxLayout):
             return
 
         self.status_label.text = f"Status: meeting saved with ID {meeting_id}"
+
+    def refresh_meetings(self, _button=None):
+        self.meetings_layout.clear_widgets()
+
+        meetings = self.service.list_meetings()
+
+        if not meetings:
+            self.meetings_layout.add_widget(
+                Label(
+                    text="No saved meetings",
+                    size_hint_y=None,
+                    height=40,
+                )
+            )
+            return
+
+        for meeting in meetings:
+            meeting_label = Label(
+                text=(f"{meeting.id}: {meeting.title}\n{meeting.created_at}"),
+                size_hint_y=None,
+                height=60,
+                halign="left",
+                valign="middle",
+            )
+            meeting_label.bind(
+                width=lambda label, _: setattr(
+                    label,
+                    "text_size",
+                    (label.width, None),
+                )
+            )
+            self.meetings_layout.add_widget(meeting_label)
 
 
 class MeetNoteApp(App):
