@@ -5,12 +5,41 @@ from meetnote.storage.repositories import (
     MeetingRepository,
 )
 from meetnote.domain.models import ActionItem, Meeting
+from meetnote.application.ai import (
+    ActionItemExtractor,
+    FakeActionItemExtractor,
+)
 
 
 class MeetingService:
-    def __init__(self, database_path: Path) -> None:
+    def __init__(
+        self,
+        database_path: Path,
+        action_item_extractor: ActionItemExtractor | None = None,
+    ) -> None:
         self.meetings = MeetingRepository(database_path)
         self.action_items = ActionItemRepository(database_path)
+        self.action_item_extractor = action_item_extractor or FakeActionItemExtractor()
+
+    def extract_action_items(self, meeting_id: int) -> int:
+        meeting = self.meetings.get(meeting_id)
+
+        if meeting is None:
+            raise ValueError(f"Meeting {meeting_id} does not exist")
+
+        extracted_items = self.action_item_extractor.extract_action_items(meeting)
+
+        created_count = 0
+
+        for item in extracted_items:
+            self.action_items.create(
+                meeting_id=meeting.id,
+                description=item.description,
+                owner=item.owner,
+            )
+            created_count += 1
+
+        return created_count
 
     def create_meeting(self, title: str, notes: str = "") -> int:
         cleaned_title = title.strip()

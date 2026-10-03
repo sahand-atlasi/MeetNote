@@ -48,6 +48,12 @@ class MeetingScreen(BoxLayout):
             size_hint_y=None,
             height=50,
         )
+        extract_button = Button(
+            text="Extract action items with AI",
+            size_hint_y=None,
+            height=50,
+        )
+        extract_button.bind(on_press=self.extract_action_items)
         add_action_item_button.bind(on_press=self.add_action_item)
         self.action_items_layout = BoxLayout(
             orientation="vertical",
@@ -142,7 +148,13 @@ class MeetingScreen(BoxLayout):
         self.add_widget(self.action_item_input)
         self.add_widget(self.owner_input)
         self.add_widget(add_action_item_button)
-
+        extract_button = Button(
+            text="Extract action items with AI",
+            size_hint_y=None,
+            height=50,
+        )
+        extract_button.bind(on_press=self.extract_action_items)
+        self.add_widget(extract_button)
         self.refresh_meetings()
         self.refresh_action_items()
 
@@ -317,6 +329,21 @@ class MeetingScreen(BoxLayout):
         self.refresh_action_items()
 
         self.status_label.text = f"Status: action item {action_item_id} added"
+
+    def extract_action_items(self, _button) -> None:
+        if self.selected_meeting_id is None:
+            self.status_label.text = "Status: select a meeting first"
+            return
+
+        try:
+            created_count = self.service.extract_action_items(self.selected_meeting_id)
+        except ValueError as error:
+            self.status_label.text = f"Status: {error}"
+            return
+
+        self.refresh_action_items()
+
+        self.status_label.text = f"Status: extracted {created_count} action items"
 
 
 class MeetNoteApp(App):
