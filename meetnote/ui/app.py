@@ -29,6 +29,26 @@ class MeetingScreen(BoxLayout):
 
         self.service = service
         self.selected_meeting_id: int | None = None
+        self.action_item_input = TextInput(
+            hint_text="Enter action item",
+            multiline=False,
+            size_hint_y=None,
+            height=45,
+        )
+
+        self.owner_input = TextInput(
+            hint_text="Enter owner (optional)",
+            multiline=False,
+            size_hint_y=None,
+            height=45,
+        )
+
+        add_action_item_button = Button(
+            text="Add action item",
+            size_hint_y=None,
+            height=50,
+        )
+        add_action_item_button.bind(on_press=self.add_action_item)
         self.action_items_layout = BoxLayout(
             orientation="vertical",
             spacing=5,
@@ -68,7 +88,8 @@ class MeetingScreen(BoxLayout):
         self.meetings_layout.bind(minimum_height=self.meetings_layout.setter("height"))
 
         meetings_scroll = ScrollView(
-            size_hint_y=1,
+            size_hint_y=None,
+            height=180,
         )
         meetings_scroll.add_widget(self.meetings_layout)
 
@@ -107,6 +128,9 @@ class MeetingScreen(BoxLayout):
                 height=40,
             )
         )
+
+        self.add_widget(meetings_scroll)
+        self.add_widget(refresh_button)
         self.add_widget(
             Label(
                 text="Action items",
@@ -115,8 +139,9 @@ class MeetingScreen(BoxLayout):
             )
         )
         self.add_widget(action_items_scroll)
-        self.add_widget(meetings_scroll)
-        self.add_widget(refresh_button)
+        self.add_widget(self.action_item_input)
+        self.add_widget(self.owner_input)
+        self.add_widget(add_action_item_button)
 
         self.refresh_meetings()
         self.refresh_action_items()
@@ -184,6 +209,16 @@ class MeetingScreen(BoxLayout):
 
         meetings = self.service.list_meetings()
 
+        if not meetings:
+            self.meetings_layout.add_widget(
+                Label(
+                    text="No saved meetings",
+                    size_hint_y=None,
+                    height=40,
+                )
+            )
+            return
+
         for meeting in meetings:
             meeting_button = Button(
                 text=(f"{meeting.id}: {meeting.title}\n{meeting.created_at}"),
@@ -196,23 +231,6 @@ class MeetingScreen(BoxLayout):
                 )
             )
             self.meetings_layout.add_widget(meeting_button)
-
-        for meeting in meetings:
-            meeting_label = Label(
-                text=(f"{meeting.id}: {meeting.title}\n{meeting.created_at}"),
-                size_hint_y=None,
-                height=60,
-                halign="left",
-                valign="middle",
-            )
-            meeting_label.bind(
-                width=lambda label, _: setattr(
-                    label,
-                    "text_size",
-                    (label.width, None),
-                )
-            )
-            self.meetings_layout.add_widget(meeting_label)
 
     def select_meeting(self, meeting_id: int) -> None:
         self.selected_meeting_id = meeting_id
@@ -245,12 +263,60 @@ class MeetingScreen(BoxLayout):
             return
 
         for item in items:
-            item_label = Label(
-                text=(f"{item.description} — {item.status}"),
+            item_button = Button(
+                text=f"{item.description} — {item.status}",
                 size_hint_y=None,
                 height=40,
             )
-            self.action_items_layout.add_widget(item_label)
+            item_button.bind(
+                on_press=lambda _button, item_id=item.id: self.toggle_action_item(
+                    item_id
+                )
+            )
+            self.action_items_layout.add_widget(item_button)
+
+    def toggle_action_item(self, action_item_id: int) -> None:
+        items = self.service.list_action_items(self.selected_meeting_id)
+
+        selected_item = next(
+            (item for item in items if item.id == action_item_id),
+            None,
+        )
+
+        if selected_item is None:
+            return
+
+        if selected_item.status == "open":
+            self.service.mark_action_item_done(action_item_id)
+        else:
+            self.service.mark_action_item_open(action_item_id)
+
+        self.refresh_action_items()
+
+    def add_action_item(self, _button) -> None:
+        if self.selected_meeting_id is None:
+            self.status_label.text = "Status: select a meeting first"
+            return
+
+        description = self.action_item_input.text.strip()
+        owner = self.owner_input.text.strip() or None
+
+        try:
+            action_item_id = self.service.add_action_item(
+                meeting_id=self.selected_meeting_id,
+                description=description,
+                owner=owner,
+            )
+        except ValueError as error:
+            self.status_label.text = f"Status: {error}"
+            return
+
+        self.action_item_input.text = ""
+        self.owner_input.text = ""
+
+        self.refresh_action_items()
+
+        self.status_label.text = f"Status: action item {action_item_id} added"
 
 
 class MeetNoteApp(App):
