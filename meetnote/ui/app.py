@@ -178,17 +178,13 @@ class MeetingScreen(BoxLayout):
             return
 
         if self.selected_file_path is None:
-            self.status_label.text = (
-                "Status: select an audio or video file"
-            )
+            self.status_label.text = "Status: select an audio or video file"
             return
 
         try:
-            self.current_meeting_id = (
-                self.meeting_service.create_meeting(
-                    title=title,
-                    notes=str(self.selected_file_path),
-                )
+            self.current_meeting_id = self.meeting_service.create_meeting(
+                title=title,
+                notes=str(self.selected_file_path),
             )
         except ValueError as error:
             self.status_label.text = f"Status: {error}"
@@ -196,8 +192,7 @@ class MeetingScreen(BoxLayout):
 
         self.action_items_label.text = "No action items loaded"
         self.status_label.text = (
-            f"Status: meeting submitted "
-            f"(ID {self.current_meeting_id})"
+            f"Status: meeting submitted (ID {self.current_meeting_id})"
         )
 
     def extract_action_items(self, _button: Button) -> None:
@@ -215,9 +210,7 @@ class MeetingScreen(BoxLayout):
             self.status_label.text = f"Status: {error}"
             return
 
-        self.status_label.text = (
-            f"Status: extracted {count} action item(s)"
-        )
+        self.status_label.text = f"Status: extracted {count} action item(s)"
         self.refresh_action_items(_button)
 
     def refresh_action_items(self, _button: Button) -> None:
@@ -237,8 +230,7 @@ class MeetingScreen(BoxLayout):
             return
 
         self.action_items_label.text = "\n".join(
-            self._format_action_item(item)
-            for item in items
+            self._format_action_item(item) for item in items
         )
         self.status_label.text = "Status: action items refreshed"
 
