@@ -2,10 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from meetnote.application.ai import (
-    ExtractedActionItem,
-    FakeActionItemExtractor,
-)
+from meetnote.application.ai import ExtractedActionItem
 from meetnote.application.services import MeetingService
 from meetnote.storage.database import initialize_database
 
