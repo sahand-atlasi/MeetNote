@@ -13,6 +13,7 @@ readme = "README.md"
 # update the Python versions in .github/workflows/check.yml if you change this
 python = ">= 3.12.0 < 3.14.0"
 kivy = ">=2.3,<3.0"
+openai = "^3.24.0"
 
 [tool.poetry.group.dev.dependencies]
 coverage = "^7.4.0"
