@@ -24,7 +24,9 @@ class MeetingService:
     ) -> None:
         self.meetings = MeetingRepository(database_path)
         self.action_items = ActionItemRepository(database_path)
-        self.action_item_extractor = action_item_extractor or FakeActionItemExtractor()
+        self.action_item_extractor = (
+            action_item_extractor or FakeActionItemExtractor()
+        )
         self.transcriber = transcriber or FakeTranscriber()
 
     def transcribe_meeting(
