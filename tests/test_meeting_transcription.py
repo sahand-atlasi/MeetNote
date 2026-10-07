@@ -1,13 +1,16 @@
 from pathlib import Path
 
-from meetnote.application.meeting_transcription import MeetingTranscriber
+from meetnote.application.meeting_transcription import (
+    MeetingTranscript,
+    MeetingTranscriber,
+)
 from meetnote.application.transcription import (
     FakeTranscriber,
     TranscriptionService,
 )
 
 
-def test_meeting_transcriber_returns_transcript(
+def test_meeting_transcriber_returns_structured_transcript(
     tmp_path: Path,
 ) -> None:
     audio_path = tmp_path / "meeting.wav"
@@ -18,7 +21,8 @@ def test_meeting_transcriber_returns_transcript(
 
     result = meeting_transcriber.transcribe_meeting(audio_path)
 
-    assert result == (
-        "Sahand will review the recording. "
-        "The team will prepare meeting minutes."
+    assert isinstance(result, MeetingTranscript)
+    assert result.audio_path == audio_path
+    assert result.text == (
+        "Sahand will review the recording. The team will prepare meeting minutes."
     )

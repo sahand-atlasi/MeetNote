@@ -1,18 +1,17 @@
 from pathlib import Path
 
+from meetnote.application.ai import (
+    ActionItemExtractor,
+    FakeActionItemExtractor,
+)
 from meetnote.application.transcription import (
     FakeTranscriber,
     Transcriber,
 )
-
+from meetnote.domain.models import ActionItem, Meeting
 from meetnote.storage.repositories import (
     ActionItemRepository,
     MeetingRepository,
-)
-from meetnote.domain.models import ActionItem, Meeting
-from meetnote.application.ai import (
-    ActionItemExtractor,
-    FakeActionItemExtractor,
 )
 
 
@@ -28,14 +27,19 @@ class MeetingService:
         self.action_item_extractor = action_item_extractor or FakeActionItemExtractor()
         self.transcriber = transcriber or FakeTranscriber()
 
-        def transcribe_meeting(
-            self,
-            meeting_id: int,
-            audio_path: Path,
-        ) -> str:
-            transcript = self.transcriber.transcribe(audio_path)
-            self.meetings.update_transcript(meeting_id, transcript)
-            return transcript
+    def transcribe_meeting(
+        self,
+        meeting_id: int,
+        audio_path: Path,
+    ) -> str:
+        transcript = self.transcriber.transcribe(audio_path)
+
+        self.meetings.update_transcript(
+            meeting_id,
+            transcript,
+        )
+
+        return transcript
 
     def extract_action_items(self, meeting_id: int) -> int:
         meeting = self.meetings.get(meeting_id)
@@ -94,20 +98,6 @@ class MeetingService:
             owner=cleaned_owner or None,
             due_date=due_date,
         )
-
-    def transcribe_meeting(
-        self,
-        meeting_id: int,
-        audio_path: Path,
-    ) -> str:
-        transcript = self.transcriber.transcribe(audio_path)
-
-        self.meetings.update_transcript(
-            meeting_id,
-            transcript,
-        )
-
-        return transcript
 
     def list_action_items(self, meeting_id: int) -> list[ActionItem]:
         return self.action_items.list_for_meeting(meeting_id)
