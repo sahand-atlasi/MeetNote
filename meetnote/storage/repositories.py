@@ -88,6 +88,26 @@ class MeetingRepository:
                 (meeting_id,),
             )
 
+    def update_transcript(
+        self,
+        meeting_id: int,
+        transcript: str,
+    ) -> None:
+        connection = connect(self.database_path)
+
+        try:
+            connection.execute(
+                """
+                UPDATE meetings
+                SET transcript = ?
+                WHERE id = ?
+                """,
+                (transcript, meeting_id),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
 
 class ActionItemRepository:
     def __init__(self, database_path: Path) -> None:
@@ -159,4 +179,19 @@ class ActionItemRepository:
                 WHERE id = ?
                 """,
                 (action_item_id,),
+            )
+
+    def update_transcript(
+        self,
+        meeting_id: int,
+        transcript: str,
+    ) -> None:
+        with connect(self.database_path) as connection:
+            connection.execute(
+                """
+                UPDATE meetings
+                SET transcript = ?
+                WHERE id = ?
+                """,
+                (transcript, meeting_id),
             )

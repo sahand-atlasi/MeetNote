@@ -81,7 +81,6 @@ class MeetingScreen(BoxLayout):
         self.submit_button.disabled = False
         self.submit_button.bind(on_press=self.submit_meeting)
 
-
         extract_button = Button(
             text="Extract action items",
             size_hint_y=None,
@@ -199,26 +198,20 @@ class MeetingScreen(BoxLayout):
             return
 
         if self.selected_file_path is None:
-            self.status_label.text = (
-                "Status: select an audio or video file"
-            )
+            self.status_label.text = "Status: select an audio or video file"
             return
 
         if (
             self.transcription_future is not None
             and not self.transcription_future.done()
         ):
-            self.status_label.text = (
-                "Status: transcription already in progress"
-            )
+            self.status_label.text = "Status: transcription already in progress"
             return
 
         try:
-            self.current_meeting_id = (
-                self.meeting_service.create_meeting(
-                    title=title,
-                    notes=str(self.selected_file_path),
-                )
+            self.current_meeting_id = self.meeting_service.create_meeting(
+                title=title,
+                notes=str(self.selected_file_path),
             )
         except Exception as error:
             self.status_label.text = f"Status: submit failed: {error}"
@@ -234,7 +227,7 @@ class MeetingScreen(BoxLayout):
         )
         self.transcription_future.add_done_callback(
             self._transcription_finished,
-    )
+        )
 
     def _transcription_finished(
         self,
@@ -243,7 +236,6 @@ class MeetingScreen(BoxLayout):
         Clock.schedule_once(
             lambda _dt: self._show_transcription_result(future),
         )
-
 
     def _show_transcription_result(
         self,
@@ -254,9 +246,7 @@ class MeetingScreen(BoxLayout):
         try:
             transcript = future.result()
         except Exception as error:
-            self.status_label.text = (
-                f"Status: transcription failed: {error}"
-            )
+            self.status_label.text = f"Status: transcription failed: {error}"
             return
 
         self.status_label.text = (

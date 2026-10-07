@@ -21,8 +21,7 @@ class ActionItemExtractor(Protocol):
     def extract_action_items(
         self,
         meeting: Meeting,
-    ) -> list[ExtractedActionItem]:
-        ...
+    ) -> list[ExtractedActionItem]: ...
 
 
 class FakeActionItemExtractor:
