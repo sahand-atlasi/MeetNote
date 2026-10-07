@@ -3,8 +3,7 @@ from typing import Protocol
 
 
 class Transcriber(Protocol):
-    def transcribe(self, audio_path: Path) -> str:
-        ...
+    def transcribe(self, audio_path: Path) -> str: ...
 
 
 class FakeTranscriber:
