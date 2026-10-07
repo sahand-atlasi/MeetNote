@@ -10,8 +10,7 @@ class Transcriber(Protocol):
 class FakeTranscriber:
     def transcribe(self, audio_path: Path) -> str:
         return (
-            "Sahand will review the recording. "
-            "The team will prepare meeting minutes."
+            "Sahand will review the recording. The team will prepare meeting minutes."
         )
 
 
@@ -43,7 +42,16 @@ class LocalWhisperTranscriber:
         )
 
         return " ".join(
-            segment.text.strip()
-            for segment in segments
-            if segment.text.strip()
+            segment.text.strip() for segment in segments if segment.text.strip()
         )
+
+
+class TranscriptionService:
+    def __init__(self, transcriber: Transcriber) -> None:
+        self._transcriber = transcriber
+
+    def transcribe(self, audio_path: Path) -> str:
+        if not audio_path.exists():
+            raise FileNotFoundError(f"Audio file does not exist: {audio_path}")
+
+        return self._transcriber.transcribe(audio_path)
