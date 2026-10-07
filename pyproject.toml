@@ -41,6 +41,7 @@ static-checks = [
 
 [tool.mypy]
 python_version = "3.12"
+# existing settings remain here
 
 [[tool.mypy.overrides]]
 module = ["meetnote.__main__", "meetnote.ui.*"]
@@ -50,3 +51,6 @@ ignore_errors = true
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[[tool.mypy.overrides]]
+module = ["faster_whisper"]
+ignore_missing_imports = true
