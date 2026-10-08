@@ -1,8 +1,5 @@
 from datetime import datetime, timezone
 from pathlib import Path
-
-from meetnote.storage.database import connect
-
 from typing import cast
 
 from meetnote.domain.models import (
@@ -10,6 +7,7 @@ from meetnote.domain.models import (
     ActionItemStatus,
     Meeting,
 )
+from meetnote.storage.database import connect
 
 
 def meeting_from_row(row: dict) -> Meeting:
@@ -17,6 +15,7 @@ def meeting_from_row(row: dict) -> Meeting:
         id=int(row["id"]),
         title=str(row["title"]),
         notes=str(row["notes"]),
+        transcript=str(row["transcript"]),
         created_at=str(row["created_at"]),
     )
 
@@ -57,7 +56,7 @@ class MeetingRepository:
         with connect(self.database_path) as connection:
             row = connection.execute(
                 """
-                SELECT id, title, notes, created_at
+                SELECT id, title, notes, transcript, created_at
                 FROM meetings
                 WHERE id = ?
                 """,
@@ -70,7 +69,7 @@ class MeetingRepository:
         with connect(self.database_path) as connection:
             rows = connection.execute(
                 """
-                SELECT id, title, notes, created_at
+                SELECT id, title, notes, transcript, created_at
                 FROM meetings
                 ORDER BY created_at DESC
                 """
@@ -93,9 +92,7 @@ class MeetingRepository:
         meeting_id: int,
         transcript: str,
     ) -> None:
-        connection = connect(self.database_path)
-
-        try:
+        with connect(self.database_path) as connection:
             connection.execute(
                 """
                 UPDATE meetings
@@ -104,9 +101,6 @@ class MeetingRepository:
                 """,
                 (transcript, meeting_id),
             )
-            connection.commit()
-        finally:
-            connection.close()
 
 
 class ActionItemRepository:
@@ -143,8 +137,7 @@ class ActionItemRepository:
                 FROM action_items
                 WHERE meeting_id = ?
                 ORDER BY id
-                """,
-                (meeting_id,),
+                """
             ).fetchall()
 
         return [action_item_from_row(dict(row)) for row in rows]
@@ -179,19 +172,4 @@ class ActionItemRepository:
                 WHERE id = ?
                 """,
                 (action_item_id,),
-            )
-
-    def update_transcript(
-        self,
-        meeting_id: int,
-        transcript: str,
-    ) -> None:
-        with connect(self.database_path) as connection:
-            connection.execute(
-                """
-                UPDATE meetings
-                SET transcript = ?
-                WHERE id = ?
-                """,
-                (transcript, meeting_id),
             )

@@ -11,6 +11,11 @@ from meetnote.application.transcription import (
 )
 
 
+EXPECTED_TRANSCRIPT = (
+    "Sahand will review the recording. The team will prepare meeting minutes."
+)
+
+
 def test_meeting_transcriber_returns_structured_transcript(
     tmp_path: Path,
 ) -> None:
@@ -24,9 +29,7 @@ def test_meeting_transcriber_returns_structured_transcript(
 
     assert isinstance(result, MeetingTranscript)
     assert result.audio_path == audio_path
-    assert result.text == (
-        "Sahand will review the recording. The team will prepare meeting minutes."
-    )
+    assert result.text == EXPECTED_TRANSCRIPT
 
 
 def test_meeting_service_saves_transcript_to_database(
@@ -41,11 +44,10 @@ def test_meeting_service_saves_transcript_to_database(
 
     result = service.transcribe_meeting(meeting_id, audio_path)
 
-    assert result == (
-        "Sahand will review the recording. The team will prepare meeting minutes."
-    )
+    assert result == EXPECTED_TRANSCRIPT
 
     meeting = service.meetings.get(meeting_id)
 
     assert meeting is not None
     assert meeting.notes == ""
+    assert meeting.transcript == EXPECTED_TRANSCRIPT

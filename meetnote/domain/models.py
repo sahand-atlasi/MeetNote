@@ -11,6 +11,7 @@ class Meeting:
     id: int
     title: str
     notes: str
+    transcript: str
     created_at: str
 
 
