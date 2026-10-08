@@ -137,7 +137,8 @@ class ActionItemRepository:
                 FROM action_items
                 WHERE meeting_id = ?
                 ORDER BY id
-                """
+                """,
+                (meeting_id,),
             ).fetchall()
 
         return [action_item_from_row(dict(row)) for row in rows]
