@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from kivy.app import App
@@ -14,6 +15,7 @@ from typing import Any
 from kivy.clock import Clock
 
 from meetnote.application.transcription import (
+    FakeTranscriber,
     LocalWhisperTranscriber,
 )
 from meetnote.application.services import MeetingService
@@ -36,13 +38,23 @@ class MeetingScreen(BoxLayout):
         data_directory = Path("data")
         data_directory.mkdir(parents=True, exist_ok=True)
 
-        self.meeting_service = MeetingService(
-            database_path=data_directory / "meetnote.db",
-            transcriber=LocalWhisperTranscriber(
+        transcriber_name = os.environ.get(
+            "MEETNOTE_TRANSCRIBER",
+            "fake",
+        ).lower()
+
+        if transcriber_name == "whisper":
+            transcriber = LocalWhisperTranscriber(
                 model_size="base",
                 device="cpu",
                 compute_type="int8",
-            ),
+            )
+        else:
+            transcriber = FakeTranscriber()
+
+        self.meeting_service = MeetingService(
+            database_path=data_directory / "meetnote.db",
+            transcriber=transcriber,
         )
         self.current_meeting_id: int | None = None
         self.selected_file_path: Path | None = None
@@ -253,17 +265,7 @@ class MeetingScreen(BoxLayout):
             "Status: meeting submitted; "
             f"transcript length: {len(transcript)} characters"
         )
-        self.status_label.text = "Status: transcribing recording"
-        self.submit_button.disabled = True
 
-        self.transcription_future = self.executor.submit(
-            self.meeting_service.transcribe_meeting,
-            self.current_meeting_id,
-            self.selected_file_path,
-        )
-        self.transcription_future.add_done_callback(
-            self._transcription_finished,
-        )
         self.action_items_label.text = "No action items loaded"
         self.status_label.text = (
             f"Status: meeting submitted (ID {self.current_meeting_id})"

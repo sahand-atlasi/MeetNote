@@ -23,6 +23,12 @@ poetry = "^1.8.3"
 pytest = "^8.3.5"
 ruff = "^0.15.0"
 
+[tool.poetry.group.whisper]
+optional = true
+
+[tool.poetry.group.whisper.dependencies]
+faster-whisper = "^1.2.1"
+
 [tool.poe.tasks]
 test = "pytest"
 coverage = "coverage run -m pytest"
