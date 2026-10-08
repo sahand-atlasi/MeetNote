@@ -77,6 +77,16 @@ class MeetingScreen(BoxLayout):
             size_hint_y=None,
             height=40,
         )
+        self.transcript_label = Label(
+            text="No transcript available",
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+            height=120,
+        )
+        self.transcript_label.bind(
+            width=self._update_transcript_text_size,
+        )
 
         select_file_button = Button(
             text="Select audio or video file",
@@ -139,10 +149,18 @@ class MeetingScreen(BoxLayout):
         self.add_widget(self.submit_button)
         self.add_widget(extract_button)
         self.add_widget(refresh_button)
+        self.add_widget(self.transcript_label)
         self.add_widget(self.action_items_label)
         self.add_widget(self.status_label)
 
     def _update_action_items_text_size(
+        self,
+        label: Label,
+        width: float,
+    ) -> None:
+        label.text_size = (width, None)
+
+    def _update_transcript_text_size(
         self,
         label: Label,
         width: float,
@@ -239,6 +257,8 @@ class MeetingScreen(BoxLayout):
             return
 
         self.status_label.text = "Status: transcribing recording"
+        self.transcript_label.text = "Transcribing..."
+        self.action_items_label.text = "No action items loaded"
         self.submit_button.disabled = True
 
         self.transcription_future = self.executor.submit(
@@ -275,6 +295,7 @@ class MeetingScreen(BoxLayout):
             f"transcript length: {len(transcript)} characters"
         )
 
+        self.transcript_label.text = transcript
         self.action_items_label.text = "No action items loaded"
         self.status_label.text = (
             f"Status: meeting submitted (ID {self.current_meeting_id})"
