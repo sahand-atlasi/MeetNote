@@ -34,6 +34,7 @@ class MeetingScreen(BoxLayout):
             max_workers=1,
             thread_name_prefix="meetnote-worker",
         )
+        self.is_shutting_down = False
         self.transcription_future: Future[str] | None = None
         data_directory = Path("data")
         data_directory.mkdir(parents=True, exist_ok=True)
@@ -274,6 +275,9 @@ class MeetingScreen(BoxLayout):
         self,
         future: Future[str],
     ) -> None:
+        if self.is_shutting_down:
+            return
+
         Clock.schedule_once(
             lambda _dt: self._show_transcription_result(future),
         )
@@ -282,6 +286,9 @@ class MeetingScreen(BoxLayout):
         self,
         future: Future[str],
     ) -> None:
+        if self.is_shutting_down:
+            return
+
         self.submit_button.disabled = False
 
         try:
@@ -347,6 +354,11 @@ class MeetingScreen(BoxLayout):
         return f"• [{item.status}] {item.description}{owner_text}"
 
     def shutdown(self) -> None:
+        self.is_shutting_down = True
+
+        if self.transcription_future is not None:
+            self.transcription_future.cancel()
+
         self.executor.shutdown(wait=False, cancel_futures=True)
 
 
