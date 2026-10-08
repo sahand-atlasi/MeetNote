@@ -74,7 +74,8 @@ class OpenAIActionItemExtractor:
             "Only include tasks that someone should perform. "
             "Use null for owner when no responsible person is stated.\n\n"
             f"Meeting title: {meeting.title}\n"
-            f"Meeting notes:\n{meeting.notes}"
+            f"Meeting notes:\n{meeting.notes}\n"
+            f"Meeting transcript:\n{meeting.transcript}"
         )
 
         response = self.client.responses.parse(
