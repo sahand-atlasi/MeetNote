@@ -158,6 +158,9 @@ class MeetingScreen(BoxLayout):
                 "*.m4a",
                 "*.mp4",
                 "*.mov",
+                "*.avi",
+                "*.flac",
+                "*.ogg",
             ],
         )
 
@@ -195,8 +198,14 @@ class MeetingScreen(BoxLayout):
             self.status_label.text = "Status: select a file first"
             return
 
-        self.selected_file_path = Path(chooser.selection[0])
-        self.selected_file_label.text = str(self.selected_file_path)
+        selected_file_path = Path(chooser.selection[0])
+
+        if not selected_file_path.is_file():
+            self.status_label.text = "Status: select a file, not a folder"
+            return
+
+        self.selected_file_path = selected_file_path
+        self.selected_file_label.text = str(selected_file_path)
         self.status_label.text = "Status: file selected"
         popup.dismiss()
 
