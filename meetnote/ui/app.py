@@ -20,6 +20,11 @@ from meetnote.application.transcription import (
 )
 from meetnote.application.services import MeetingService
 
+from meetnote.application.ai import (
+    FakeActionItemExtractor,
+    GeminiActionItemExtractor,
+)
+
 
 class MeetingScreen(BoxLayout):
     def __init__(self, **kwargs: Any) -> None:
@@ -36,6 +41,7 @@ class MeetingScreen(BoxLayout):
         )
         self.is_shutting_down = False
         self.transcription_future: Future[str] | None = None
+        self.extraction_future: Future[int] | None = None
         data_directory = Path("data")
         data_directory.mkdir(parents=True, exist_ok=True)
 
@@ -53,8 +59,19 @@ class MeetingScreen(BoxLayout):
         else:
             transcriber = FakeTranscriber()
 
+        action_extractor_name = os.environ.get(
+            "MEETNOTE_ACTION_EXTRACTOR",
+            "fake",
+        ).lower()
+
+        if action_extractor_name == "gemini":
+            action_item_extractor = GeminiActionItemExtractor()
+        else:
+            action_item_extractor = FakeActionItemExtractor()
+
         self.meeting_service = MeetingService(
             database_path=data_directory / "meetnote.db",
+            action_item_extractor=action_item_extractor,
             transcriber=transcriber,
         )
         self.current_meeting_id: int | None = None
@@ -315,18 +332,59 @@ class MeetingScreen(BoxLayout):
             )
             return
 
-        try:
-            count = self.meeting_service.extract_action_items(
-                self.current_meeting_id,
-            )
-        except ValueError as error:
-            self.status_label.text = f"Status: {error}"
+        if (
+            self.transcription_future is not None
+            and not self.transcription_future.done()
+        ):
+            self.status_label.text = "Status: transcription is still in progress"
             return
 
-        self.status_label.text = f"Status: extracted {count} action item(s)"
-        self.refresh_action_items(_button)
+        if self.extraction_future is not None and not self.extraction_future.done():
+            self.status_label.text = "Status: extraction already in progress"
+            return
 
-    def refresh_action_items(self, _button: Button) -> None:
+        meeting_id = self.current_meeting_id
+        self.status_label.text = "Status: extracting action items..."
+        self.action_items_label.text = "Please wait..."
+        self.extraction_future = self.executor.submit(
+            self.meeting_service.extract_action_items,
+            meeting_id,
+        )
+        self.extraction_future.add_done_callback(
+            self._extraction_finished,
+        )
+
+    def _extraction_finished(self, future: Future[int]) -> None:
+        if self.is_shutting_down:
+            return
+
+        Clock.schedule_once(
+            lambda _dt: self._show_extraction_result(future),
+        )
+
+    def _show_extraction_result(self, future: Future[int]) -> None:
+        if self.is_shutting_down:
+            return
+
+        try:
+            count = future.result()
+        except Exception as error:
+            self.status_label.text = f"Status: extraction failed: {error}"
+            self.action_items_label.text = "Could not load action items"
+            return
+
+        self.refresh_action_items(None, update_status=False)
+
+        if count == 0:
+            self.status_label.text = "Status: no action items found"
+        else:
+            self.status_label.text = f"Status: extracted {count} action item(s)"
+
+    def refresh_action_items(
+        self,
+        _button: Button | None,
+        update_status: bool = True,
+    ) -> None:
         if self.current_meeting_id is None:
             self.action_items_label.text = (
                 "Submit a meeting before refreshing action items"
@@ -339,13 +397,15 @@ class MeetingScreen(BoxLayout):
 
         if not items:
             self.action_items_label.text = "No action items"
-            self.status_label.text = "Status: action items refreshed"
+            if update_status:
+                self.status_label.text = "Status: action items refreshed"
             return
 
         self.action_items_label.text = "\n".join(
             self._format_action_item(item) for item in items
         )
-        self.status_label.text = "Status: action items refreshed"
+        if update_status:
+            self.status_label.text = "Status: action items refreshed"
 
     @staticmethod
     def _format_action_item(item: Any) -> str:
@@ -358,6 +418,8 @@ class MeetingScreen(BoxLayout):
 
         if self.transcription_future is not None:
             self.transcription_future.cancel()
+        if self.extraction_future is not None:
+            self.extraction_future.cancel()
 
         self.executor.shutdown(wait=False, cancel_futures=True)
 

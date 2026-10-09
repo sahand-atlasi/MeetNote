@@ -5,13 +5,13 @@ from meetnote.application.ai import (
     ActionItemOutput,
     ActionItemsOutput,
     FakeActionItemExtractor,
-    OpenAIActionItemExtractor,
+    GeminiActionItemExtractor,
 )
 from meetnote.application.services import MeetingService
 from meetnote.domain.models import Meeting
 
 
-def test_openai_action_item_extractor_returns_parsed_items() -> None:
+def test_gemini_action_item_extractor_returns_parsed_items() -> None:
     meeting = Meeting(
         id=1,
         title="Weekly meeting",
@@ -33,12 +33,14 @@ def test_openai_action_item_extractor_returns_parsed_items() -> None:
         ]
     )
 
-    response = SimpleNamespace(output_parsed=parsed_output)
+    response = SimpleNamespace(
+        text=parsed_output.model_dump_json(),
+    )
 
     client = MagicMock()
-    client.responses.parse.return_value = response
+    client.models.generate_content.return_value = response
 
-    extractor = OpenAIActionItemExtractor(
+    extractor = GeminiActionItemExtractor(
         client=client,
         model="test-model",
     )
@@ -51,7 +53,7 @@ def test_openai_action_item_extractor_returns_parsed_items() -> None:
     assert result[1].description == "Prepare meeting minutes"
     assert result[1].owner is None
 
-    client.responses.parse.assert_called_once()
+    client.models.generate_content.assert_called_once()
 
 
 def test_meeting_service_extracts_and_saves_action_items(
@@ -81,9 +83,7 @@ def test_meeting_service_extracts_and_saves_action_items(
     assert action_items[1].status == "open"
 
 
-def test_meeting_service_rejects_unknown_meeting(
-    tmp_path,
-) -> None:
+def test_meeting_service_rejects_unknown_meeting(tmp_path) -> None:
     database_path = tmp_path / "meetnote.db"
 
     service = MeetingService(
