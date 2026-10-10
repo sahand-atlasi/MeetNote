@@ -100,4 +100,40 @@ def test_action_item_can_be_verified(tmp_path):
 
     assert items[0].status == "verified"
 
-    
+def test_upcoming_action_items_are_sorted_by_due_date(tmp_path):
+    database_path = tmp_path / "meetnote.db"
+
+    meetings = MeetingRepository(database_path)
+    action_items = ActionItemRepository(database_path)
+
+    meeting_id = meetings.create("Planning")
+
+    action_items.create(
+        meeting_id,
+        "Later task",
+        due_date="2026-10-20",
+    )
+    action_items.create(
+        meeting_id,
+        "Earlier task",
+        due_date="2026-10-15",
+    )
+    action_items.create(
+        meeting_id,
+        "Task without a deadline",
+    )
+
+    upcoming = action_items.list_for_meeting(meeting_id)
+
+    upcoming_with_dates = [
+        item for item in upcoming if item.due_date is not None
+    ]
+    upcoming_with_dates = sorted(
+        upcoming_with_dates,
+        key=lambda item: item.due_date,
+    )
+
+    assert [item.description for item in upcoming_with_dates] == [
+        "Earlier task",
+        "Later task",
+    ]
