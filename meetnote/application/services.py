@@ -99,21 +99,6 @@ class MeetingService:
             due_date=due_date,
         )
 
-    def list_upcoming_action_items(
-        self,
-        meeting_id: int,
-    ) -> list[ActionItem]:
-        items = self.list_action_items(meeting_id)
-
-        return sorted(
-            (
-                item
-                for item in items
-                if item.status == "open" and item.due_date is not None
-            ),
-            key=lambda item: item.due_date,
-        )
-
     def list_action_items(self, meeting_id: int) -> list[ActionItem]:
         return self.action_items.list_for_meeting(meeting_id)
 
@@ -123,8 +108,21 @@ class MeetingService:
     def mark_action_item_open(self, action_item_id: int) -> None:
         self.action_items.mark_open(action_item_id)
 
-    def verify_action_item(self, action_item_id: int) -> None:
-        self.action_items.verify(action_item_id)
+    def list_upcoming_action_items(
+        self,
+        meeting_id: int,
+    ) -> list[ActionItem]:
+        items = self.list_action_items(meeting_id)
+
+        upcoming_items: list[tuple[str, ActionItem]] = []
+
+        for item in items:
+            if item.status == "open" and item.due_date is not None:
+                upcoming_items.append((item.due_date, item))
+
+        upcoming_items.sort(key=lambda entry: entry[0])
+
+        return [item for _, item in upcoming_items]
 
     def reopen_action_item(self, action_item_id: int) -> None:
         self.action_items.reopen(action_item_id)
