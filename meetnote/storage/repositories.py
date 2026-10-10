@@ -174,3 +174,25 @@ class ActionItemRepository:
                 """,
                 (action_item_id,),
             )
+
+    def verify(self, action_item_id: int) -> None:
+        with connect(self.database_path) as connection:
+            connection.execute(
+                """
+                UPDATE action_items
+                SET status = 'verified'
+                WHERE id = ?
+                """,
+                (action_item_id,),
+            )
+
+    def reopen(self, action_item_id: int) -> None:
+        with connect(self.database_path) as connection:
+            connection.execute(
+                """
+                UPDATE action_items
+                SET status = 'open'
+                WHERE id = ?
+                """,
+                (action_item_id,),
+            )
