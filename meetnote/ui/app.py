@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -14,34 +13,37 @@ from typing import Any
 
 from kivy.clock import Clock
 
+from kivy.uix.screenmanager import ScreenManager, Screen
+
+from meetnote.application.services import MeetingService
 from meetnote.application.transcription import (
     FakeTranscriber,
     LocalWhisperTranscriber,
 )
-from meetnote.application.services import MeetingService
-
 from meetnote.application.ai import (
     FakeActionItemExtractor,
     GeminiActionItemExtractor,
 )
 
 
-class MeetingScreen(BoxLayout):
+class MeetingScreen(Screen):
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(
+        super().__init__(name="meeting", **kwargs)
+
+        layout = BoxLayout(
             orientation="vertical",
             spacing=10,
             padding=20,
-            **kwargs,
         )
 
         self.executor = ThreadPoolExecutor(
             max_workers=1,
             thread_name_prefix="meetnote-worker",
         )
-        self.is_shutting_down = False
-        self.transcription_future: Future[str] | None = None
-        self.extraction_future: Future[int] | None = None
+        layout.is_shutting_down = False
+        layout.transcription_future: Future[str] | None = None
+        layout.extraction_future: Future[int] | None = None
+        self.add_widget(layout)
         data_directory = Path("data")
         data_directory.mkdir(parents=True, exist_ok=True)
 
@@ -135,6 +137,13 @@ class MeetingScreen(BoxLayout):
         )
         refresh_button.bind(on_press=self.refresh_action_items)
 
+        kanban_button = Button(
+            text="Open Kanban board",
+            size_hint_y=None,
+            height=50,
+        )
+        kanban_button.bind(on_press=self.open_kanban_board)
+
         self.action_items_label = Label(
             text="No action items loaded",
             halign="left",
@@ -167,6 +176,7 @@ class MeetingScreen(BoxLayout):
         self.add_widget(self.submit_button)
         self.add_widget(extract_button)
         self.add_widget(refresh_button)
+        self.add_widget(kanban_button)
         self.add_widget(self.transcript_label)
         self.add_widget(self.action_items_label)
         self.add_widget(self.status_label)
@@ -325,6 +335,21 @@ class MeetingScreen(BoxLayout):
             f"Status: meeting submitted (ID {self.current_meeting_id})"
         )
 
+    def open_kanban_board(self, _button: Button) -> None:
+        manager = self.parent
+
+        if not isinstance(manager, ScreenManager):
+            return
+
+        kanban_screen = manager.get_screen("kanban")
+
+        if not isinstance(kanban_screen, KanbanScreen):
+            return
+
+        kanban_screen.current_meeting_id = self.current_meeting_id
+        kanban_screen.refresh_board(None)
+        manager.current = "kanban"
+
     def extract_action_items(self, _button: Button) -> None:
         if self.current_meeting_id is None:
             self.action_items_label.text = (
@@ -424,12 +449,187 @@ class MeetingScreen(BoxLayout):
         self.executor.shutdown(wait=False, cancel_futures=True)
 
 
+class KanbanScreen(Screen):
+    def __init__(
+        self,
+        meeting_service: MeetingService,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(name="kanban", **kwargs)
+
+        self.meeting_service = meeting_service
+
+        layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
+
+        self.title_label = Label(
+            text="Kanban board",
+            font_size="28sp",
+            size_hint_y=None,
+            height=50,
+        )
+
+        self.summary_label = Label(
+            text="Open: 0 | Done: 0 | Verified: 0",
+            size_hint_y=None,
+            height=40,
+        )
+
+        self.deadlines_label = Label(
+            text="Upcoming deadlines\nNo upcoming deadlines",
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+            height=120,
+        )
+        self.deadlines_label.bind(
+            width=self._update_deadlines_text_size,
+        )
+
+        columns = BoxLayout(orientation="horizontal", spacing=10)
+
+        self.open_column = self._create_column("Open")
+        self.done_column = self._create_column("Done")
+        self.verified_column = self._create_column("Verified")
+
+        columns.add_widget(self.open_column)
+        columns.add_widget(self.done_column)
+        columns.add_widget(self.verified_column)
+
+        refresh_button = Button(
+            text="Refresh board",
+            size_hint_y=None,
+            height=50,
+        )
+        refresh_button.bind(on_press=self.refresh_board)
+
+        layout.add_widget(self.title_label)
+        layout.add_widget(columns)
+        layout.add_widget(self.deadlines_label)
+        layout.add_widget(refresh_button)
+
+        self.add_widget(layout)
+
+    def _create_column(self, title: str) -> BoxLayout:
+        column = BoxLayout(
+            orientation="vertical",
+            spacing=10,
+            padding=10,
+        )
+
+        column.add_widget(
+            Label(
+                text=title,
+                font_size="22sp",
+                size_hint_y=None,
+                height=40,
+            )
+        )
+
+        return column
+
+    def _update_deadlines_text_size(
+        self,
+        label: Label,
+        width: float,
+    ) -> None:
+        label.text_size = (width, None)
+
+    def refresh_board(self, _button: Button) -> None:
+        items = self.meeting_service.list_action_items(
+            self.current_meeting_id,
+        )
+
+        self.open_column.clear_widgets()
+        self.done_column.clear_widgets()
+        self.verified_column.clear_widgets()
+
+        self.open_column.add_widget(Label(text="Open", font_size="22sp"))
+        self.done_column.add_widget(Label(text="Done", font_size="22sp"))
+        self.verified_column.add_widget(Label(text="Verified", font_size="22sp"))
+
+        for item in items:
+            owner = item.owner or "All / unassigned"
+            due_date = item.due_date or "No deadline"
+
+            item_label = Label(
+                text=(
+                    f"• [{item.status}] {item.description}\n"
+                    f"Owner: {owner}\n"
+                    f"Due: {due_date}"
+                ),
+                halign="left",
+                valign="top",
+                size_hint_y=None,
+                height=100,
+            )
+            item_label.bind(width=self._update_item_text_size)
+
+            if item.status == "open":
+                self.open_column.add_widget(item_label)
+            elif item.status == "done":
+                self.done_column.add_widget(item_label)
+            else:
+                self.verified_column.add_widget(item_label)
+
+        open_count = sum(item.status == "open" for item in items)
+        done_count = sum(item.status == "done" for item in items)
+        verified_count = sum(item.status == "verified" for item in items)
+
+        self.deadlines_label.text = "\n".join(
+            f"• {item.due_date} — {item.description} — "
+            f"{item.owner or 'All / unassigned'}"
+            for item in sorted(
+                (
+                    item
+                    for item in items
+                    if item.status == "open" and item.due_date is not None
+                ),
+                key=lambda item: item.due_date,
+            )
+        )
+
+        self.title_label.text = (
+            "Kanban board\n"
+            f"Open: {open_count} | Done: {done_count} | "
+            f"Verified: {verified_count}"
+        )
+
+    def _update_item_text_size(
+        self,
+        label: Label,
+        width: float,
+    ) -> None:
+        label.text_size = (width, None)
+
+
 class MeetNoteApp(App):
     title = "MeetNote"
 
-    def build(self) -> MeetingScreen:
-        return MeetingScreen()
+    def build(self) -> ScreenManager:
+        manager = ScreenManager()
+
+        meeting_screen = MeetingScreen(name="meeting")
+        kanban_screen = KanbanScreen(
+            meeting_service=self._create_meeting_service(),
+            name="kanban",
+        )
+
+        manager.add_widget(meeting_screen)
+        manager.add_widget(kanban_screen)
+
+        return manager
 
     def on_stop(self) -> None:
-        if isinstance(self.root, MeetingScreen):
-            self.root.shutdown()
+        root = self.root
+
+        if isinstance(root, ScreenManager):
+            for screen in root.screens:
+                if isinstance(screen, MeetingScreen):
+                    screen.shutdown()
+
+    def _create_meeting_service(self) -> MeetingService:
+        return MeetingService(
+            database_path=Path("data") / "meetnote.db",
+            action_item_extractor=FakeActionItemExtractor(),
+            transcriber=FakeTranscriber(),
+        )
