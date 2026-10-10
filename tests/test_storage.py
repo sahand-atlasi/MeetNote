@@ -81,24 +81,6 @@ def test_invalid_action_item_meeting_is_rejected(tmp_path):
                 (999999, "Invalid item"),
             )
 
-def test_action_item_can_be_verified(tmp_path):
-    database_path = tmp_path / "meetnote.db"
-
-    meetings = MeetingRepository(database_path)
-    action_items = ActionItemRepository(database_path)
-
-    meeting_id = meetings.create("Planning")
-    action_item_id = action_items.create(
-        meeting_id,
-        "Review the transcript",
-    )
-
-    action_items.mark_done(action_item_id)
-    action_items.verify(action_item_id)
-
-    items = action_items.list_for_meeting(meeting_id)
-
-    assert items[0].status == "verified"
 
 def test_upcoming_action_items_are_sorted_by_due_date(tmp_path):
     database_path = tmp_path / "meetnote.db"
@@ -125,9 +107,7 @@ def test_upcoming_action_items_are_sorted_by_due_date(tmp_path):
 
     upcoming = action_items.list_for_meeting(meeting_id)
 
-    upcoming_with_dates = [
-        item for item in upcoming if item.due_date is not None
-    ]
+    upcoming_with_dates = [item for item in upcoming if item.due_date is not None]
     upcoming_with_dates = sorted(
         upcoming_with_dates,
         key=lambda item: item.due_date,
@@ -137,3 +117,23 @@ def test_upcoming_action_items_are_sorted_by_due_date(tmp_path):
         "Earlier task",
         "Later task",
     ]
+
+
+def test_action_item_can_be_verified(tmp_path):
+    database_path = tmp_path / "meetnote.db"
+
+    meetings = MeetingRepository(database_path)
+    action_items = ActionItemRepository(database_path)
+
+    meeting_id = meetings.create("Planning")
+    action_item_id = action_items.create(
+        meeting_id,
+        "Review the transcript",
+    )
+
+    action_items.mark_done(action_item_id)
+    action_items.verify(action_item_id)
+
+    items = action_items.list_for_meeting(meeting_id)
+
+    assert items[0].status == "verified"
