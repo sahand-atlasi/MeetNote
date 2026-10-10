@@ -3,7 +3,7 @@ from typing import Literal
 
 
 MeetingStatus = Literal["active", "archived"]
-ActionItemStatus = Literal["open", "done"]
+ActionItemStatus = Literal["open", "done", "verified"]
 
 
 @dataclass(frozen=True)

@@ -80,3 +80,24 @@ def test_invalid_action_item_meeting_is_rejected(tmp_path):
                 """,
                 (999999, "Invalid item"),
             )
+
+def test_action_item_can_be_verified(tmp_path):
+    database_path = tmp_path / "meetnote.db"
+
+    meetings = MeetingRepository(database_path)
+    action_items = ActionItemRepository(database_path)
+
+    meeting_id = meetings.create("Planning")
+    action_item_id = action_items.create(
+        meeting_id,
+        "Review the transcript",
+    )
+
+    action_items.mark_done(action_item_id)
+    action_items.verify(action_item_id)
+
+    items = action_items.list_for_meeting(meeting_id)
+
+    assert items[0].status == "verified"
+
+    
