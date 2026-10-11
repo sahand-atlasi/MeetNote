@@ -25,10 +25,12 @@ def test_gemini_action_item_extractor_returns_parsed_items() -> None:
             ActionItemOutput(
                 description="Review the recording",
                 owner="Sahand",
+                due_date="2026-10-15",
             ),
             ActionItemOutput(
                 description="Prepare meeting minutes",
                 owner=None,
+                due_date=None,
             ),
         ]
     )
@@ -50,6 +52,7 @@ def test_gemini_action_item_extractor_returns_parsed_items() -> None:
     assert len(result) == 2
     assert result[0].description == "Review the recording"
     assert result[0].owner == "Sahand"
+    assert result[0].due_date == "2026-10-15"
     assert result[1].description == "Prepare meeting minutes"
     assert result[1].owner is None
 
@@ -77,6 +80,7 @@ def test_meeting_service_extracts_and_saves_action_items(
     assert len(action_items) == 2
     assert action_items[0].description == "Review the meeting recording"
     assert action_items[0].owner == "Sahand"
+    assert action_items[0].due_date is None
     assert action_items[0].status == "open"
     assert action_items[1].description == "Prepare meeting minutes"
     assert action_items[1].owner is None
