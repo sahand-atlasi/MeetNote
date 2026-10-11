@@ -56,6 +56,7 @@ class MeetingService:
                 meeting_id=meeting.id,
                 description=item.description,
                 owner=item.owner,
+                due_date=item.due_date,
             )
             created_count += 1
 
