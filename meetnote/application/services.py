@@ -126,3 +126,6 @@ class MeetingService:
 
     def reopen_action_item(self, action_item_id: int) -> None:
         self.action_items.reopen(action_item_id)
+
+    def verify_action_item(self, action_item_id: int) -> None:
+        self.action_items.verify(action_item_id)
