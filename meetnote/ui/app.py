@@ -27,8 +27,14 @@ from meetnote.application.ai import (
 
 
 class MeetingScreen(Screen):
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        meeting_service: MeetingService,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(name="meeting", **kwargs)
+
+        self.meeting_service = meeting_service
 
         layout = BoxLayout(
             orientation="vertical",
@@ -40,42 +46,13 @@ class MeetingScreen(Screen):
             max_workers=1,
             thread_name_prefix="meetnote-worker",
         )
-        layout.is_shutting_down = False
-        layout.transcription_future: Future[str] | None = None
-        layout.extraction_future: Future[int] | None = None
+        self.is_shutting_down = False
+        self.transcription_future: Future[str] | None = None
+        self.extraction_future: Future[int] | None = None
         self.add_widget(layout)
         data_directory = Path("data")
         data_directory.mkdir(parents=True, exist_ok=True)
 
-        transcriber_name = os.environ.get(
-            "MEETNOTE_TRANSCRIBER",
-            "fake",
-        ).lower()
-
-        if transcriber_name == "whisper":
-            transcriber = LocalWhisperTranscriber(
-                model_size="base",
-                device="cpu",
-                compute_type="int8",
-            )
-        else:
-            transcriber = FakeTranscriber()
-
-        action_extractor_name = os.environ.get(
-            "MEETNOTE_ACTION_EXTRACTOR",
-            "fake",
-        ).lower()
-
-        if action_extractor_name == "gemini":
-            action_item_extractor = GeminiActionItemExtractor()
-        else:
-            action_item_extractor = FakeActionItemExtractor()
-
-        self.meeting_service = MeetingService(
-            database_path=data_directory / "meetnote.db",
-            action_item_extractor=action_item_extractor,
-            transcriber=transcriber,
-        )
         self.current_meeting_id: int | None = None
         self.selected_file_path: Path | None = None
 
@@ -458,6 +435,7 @@ class KanbanScreen(Screen):
         super().__init__(name="kanban", **kwargs)
 
         self.meeting_service = meeting_service
+        self.current_meeting_id: int | None = None
 
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
 
@@ -551,25 +529,65 @@ class KanbanScreen(Screen):
             owner = item.owner or "All / unassigned"
             due_date = item.due_date or "No deadline"
 
+            card = BoxLayout(
+                orientation="vertical",
+                spacing=5,
+                size_hint_y=None,
+                height=170,
+            )
+
             item_label = Label(
-                text=(
-                    f"• [{item.status}] {item.description}\n"
-                    f"Owner: {owner}\n"
-                    f"Due: {due_date}"
-                ),
+                text=(f"• {item.description}\nOwner: {owner}\nDue: {due_date}"),
                 halign="left",
                 valign="top",
                 size_hint_y=None,
                 height=100,
             )
             item_label.bind(width=self._update_item_text_size)
+            card.add_widget(item_label)
+
+            actions = BoxLayout(
+                orientation="horizontal",
+                spacing=5,
+                size_hint_y=None,
+                height=45,
+            )
 
             if item.status == "open":
-                self.open_column.add_widget(item_label)
+                done_button = Button(text="Mark done")
+                done_button.bind(
+                    on_press=lambda _button, item_id=item.id: self._mark_done(item_id)
+                )
+                actions.add_widget(done_button)
+
             elif item.status == "done":
-                self.done_column.add_widget(item_label)
+                verify_button = Button(text="Verify")
+                verify_button.bind(
+                    on_press=lambda _button, item_id=item.id: self._verify(item_id)
+                )
+                actions.add_widget(verify_button)
+
+                reopen_button = Button(text="Reopen")
+                reopen_button.bind(
+                    on_press=lambda _button, item_id=item.id: self._reopen(item_id)
+                )
+                actions.add_widget(reopen_button)
+
             else:
-                self.verified_column.add_widget(item_label)
+                reopen_button = Button(text="Reopen")
+                reopen_button.bind(
+                    on_press=lambda _button, item_id=item.id: self._reopen(item_id)
+                )
+                actions.add_widget(reopen_button)
+
+            card.add_widget(actions)
+
+            if item.status == "open":
+                self.open_column.add_widget(card)
+            elif item.status == "done":
+                self.done_column.add_widget(card)
+            else:
+                self.verified_column.add_widget(card)
 
         open_count = sum(item.status == "open" for item in items)
         done_count = sum(item.status == "done" for item in items)
@@ -601,16 +619,32 @@ class KanbanScreen(Screen):
     ) -> None:
         label.text_size = (width, None)
 
+    def _mark_done(self, action_item_id: int) -> None:
+        self.meeting_service.mark_action_item_done(action_item_id)
+        self.refresh_board(None)
+
+    def _verify(self, action_item_id: int) -> None:
+        self.meeting_service.verify_action_item(action_item_id)
+        self.refresh_board(None)
+
+    def _reopen(self, action_item_id: int) -> None:
+        self.meeting_service.reopen_action_item(action_item_id)
+        self.refresh_board(None)
+
 
 class MeetNoteApp(App):
     title = "MeetNote"
 
     def build(self) -> ScreenManager:
         manager = ScreenManager()
+        meeting_service = self._create_meeting_service()
 
-        meeting_screen = MeetingScreen(name="meeting")
+        meeting_screen = MeetingScreen(
+            meeting_service=meeting_service,
+            name="meeting",
+        )
         kanban_screen = KanbanScreen(
-            meeting_service=self._create_meeting_service(),
+            meeting_service=meeting_service,
             name="kanban",
         )
 
@@ -619,6 +653,40 @@ class MeetNoteApp(App):
 
         return manager
 
+    def _create_meeting_service(self) -> MeetingService:
+        data_directory = Path("data")
+        data_directory.mkdir(parents=True, exist_ok=True)
+
+        transcriber_name = os.environ.get(
+            "MEETNOTE_TRANSCRIBER",
+            "fake",
+        ).lower()
+
+        if transcriber_name == "whisper":
+            transcriber = LocalWhisperTranscriber(
+                model_size="base",
+                device="cpu",
+                compute_type="int8",
+            )
+        else:
+            transcriber = FakeTranscriber()
+
+        action_extractor_name = os.environ.get(
+            "MEETNOTE_ACTION_EXTRACTOR",
+            "fake",
+        ).lower()
+
+        if action_extractor_name == "gemini":
+            action_item_extractor = GeminiActionItemExtractor()
+        else:
+            action_item_extractor = FakeActionItemExtractor()
+
+        return MeetingService(
+            database_path=data_directory / "meetnote.db",
+            action_item_extractor=action_item_extractor,
+            transcriber=transcriber,
+        )
+
     def on_stop(self) -> None:
         root = self.root
 
@@ -626,10 +694,3 @@ class MeetNoteApp(App):
             for screen in root.screens:
                 if isinstance(screen, MeetingScreen):
                     screen.shutdown()
-
-    def _create_meeting_service(self) -> MeetingService:
-        return MeetingService(
-            database_path=Path("data") / "meetnote.db",
-            action_item_extractor=FakeActionItemExtractor(),
-            transcriber=FakeTranscriber(),
-        )
