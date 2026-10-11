@@ -130,3 +130,6 @@ class MeetingService:
 
     def verify_action_item(self, action_item_id: int) -> None:
         self.action_items.verify(action_item_id)
+
+    def delete_action_item(self, action_item_id: int) -> None:
+        self.action_items.delete(action_item_id)
