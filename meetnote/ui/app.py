@@ -7,7 +7,7 @@ from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
-
+from kivy.uix.scrollview import ScrollView
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any
 
@@ -32,15 +32,22 @@ class MeetingScreen(Screen):
         meeting_service: MeetingService,
         **kwargs: Any,
     ) -> None:
-        super().__init__(name="meeting", **kwargs)
+        super().__init__(**kwargs)
 
         self.meeting_service = meeting_service
+
+        scroll = ScrollView()
 
         layout = BoxLayout(
             orientation="vertical",
             spacing=10,
             padding=20,
+            size_hint_y=None,
         )
+        layout.bind(minimum_height=layout.setter("height"))
+
+        scroll.add_widget(layout)
+        self.add_widget(scroll)
 
         self.executor = ThreadPoolExecutor(
             max_workers=1,
@@ -49,7 +56,6 @@ class MeetingScreen(Screen):
         self.is_shutting_down = False
         self.transcription_future: Future[str] | None = None
         self.extraction_future: Future[int] | None = None
-        self.add_widget(layout)
         data_directory = Path("data")
         data_directory.mkdir(parents=True, exist_ok=True)
 
@@ -132,7 +138,7 @@ class MeetingScreen(Screen):
             width=self._update_action_items_text_size,
         )
 
-        self.add_widget(
+        layout.add_widget(
             Label(
                 text="MeetNote",
                 font_size="30sp",
@@ -140,23 +146,23 @@ class MeetingScreen(Screen):
                 height=50,
             )
         )
-        self.add_widget(
+        layout.add_widget(
             Label(
                 text="Create a new meeting",
                 size_hint_y=None,
                 height=35,
             )
         )
-        self.add_widget(self.title_input)
-        self.add_widget(select_file_button)
-        self.add_widget(self.selected_file_label)
-        self.add_widget(self.submit_button)
-        self.add_widget(extract_button)
-        self.add_widget(refresh_button)
-        self.add_widget(kanban_button)
-        self.add_widget(self.transcript_label)
-        self.add_widget(self.action_items_label)
-        self.add_widget(self.status_label)
+        layout.add_widget(self.title_input)
+        layout.add_widget(select_file_button)
+        layout.add_widget(self.selected_file_label)
+        layout.add_widget(self.submit_button)
+        layout.add_widget(extract_button)
+        layout.add_widget(refresh_button)
+        layout.add_widget(kanban_button)
+        layout.add_widget(self.transcript_label)
+        layout.add_widget(self.action_items_label)
+        layout.add_widget(self.status_label)
 
     def _update_action_items_text_size(
         self,
@@ -432,7 +438,7 @@ class KanbanScreen(Screen):
         meeting_service: MeetingService,
         **kwargs: Any,
     ) -> None:
-        super().__init__(name="kanban", **kwargs)
+        super().__init__(**kwargs)
 
         self.meeting_service = meeting_service
         self.current_meeting_id: int | None = None
@@ -463,7 +469,16 @@ class KanbanScreen(Screen):
             width=self._update_deadlines_text_size,
         )
 
-        columns = BoxLayout(orientation="horizontal", spacing=10)
+        board_scroll = ScrollView(do_scroll_y=False)
+
+        columns = BoxLayout(
+            orientation="horizontal",
+            spacing=10,
+            size_hint_x=None,
+            width=1200,
+        )
+
+        board_scroll.add_widget(columns)
 
         self.open_column = self._create_column("Open")
         self.done_column = self._create_column("Done")
@@ -481,7 +496,7 @@ class KanbanScreen(Screen):
         refresh_button.bind(on_press=self.refresh_board)
 
         layout.add_widget(self.title_label)
-        layout.add_widget(columns)
+        layout.add_widget(board_scroll)
         layout.add_widget(self.deadlines_label)
         layout.add_widget(refresh_button)
 
@@ -533,7 +548,7 @@ class KanbanScreen(Screen):
                 orientation="vertical",
                 spacing=5,
                 size_hint_y=None,
-                height=170,
+                height=200,
             )
 
             item_label = Label(
@@ -580,6 +595,11 @@ class KanbanScreen(Screen):
                 )
                 actions.add_widget(reopen_button)
 
+            delete_button = Button(text="Delete")
+            delete_button.bind(
+                on_press=lambda _button, item_id=item.id: self._delete(item_id)
+            )
+            actions.add_widget(delete_button)
             card.add_widget(actions)
 
             if item.status == "open":
@@ -629,6 +649,10 @@ class KanbanScreen(Screen):
 
     def _reopen(self, action_item_id: int) -> None:
         self.meeting_service.reopen_action_item(action_item_id)
+        self.refresh_board(None)
+
+    def _delete(self, action_item_id: int) -> None:
+        self.meeting_service.delete_action_item(action_item_id)
         self.refresh_board(None)
 
 
