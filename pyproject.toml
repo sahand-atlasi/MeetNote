@@ -11,8 +11,9 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 # update the Python versions in .github/workflows/check.yml if you change this
-python = ">= 3.12.0 < 3.14.0"
+python = ">= 3.11.0 < 3.14.0"
 kivy = ">=2.3,<3.0"
+google-genai = "^2.29.0"
 
 [tool.poetry.group.dev.dependencies]
 coverage = "^7.4.0"
@@ -21,6 +22,12 @@ poethepoet = "^0.37.0"
 poetry = "^1.8.3"
 pytest = "^8.3.5"
 ruff = "^0.15.0"
+
+[tool.poetry.group.whisper]
+optional = true
+
+[tool.poetry.group.whisper.dependencies]
+faster-whisper = "^1.2.1"
 
 [tool.poe.tasks]
 test = "pytest"
@@ -40,6 +47,7 @@ static-checks = [
 
 [tool.mypy]
 python_version = "3.12"
+# existing settings remain here
 
 [[tool.mypy.overrides]]
 module = ["meetnote.__main__", "meetnote.ui.*"]
@@ -49,3 +57,6 @@ ignore_errors = true
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[[tool.mypy.overrides]]
+module = ["faster_whisper"]
+ignore_missing_imports = true
