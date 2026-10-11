@@ -137,3 +137,26 @@ def test_action_item_can_be_verified(tmp_path):
     items = action_items.list_for_meeting(meeting_id)
 
     assert items[0].status == "verified"
+
+
+def test_action_item_status_flow(tmp_path):
+    meeting_repository = MeetingRepository(tmp_path / "test.db")
+    action_item_repository = ActionItemRepository(tmp_path / "test.db")
+
+    meeting_id = meeting_repository.create(title="Status flow meeting")
+    action_item_id = action_item_repository.create(
+        meeting_id=meeting_id,
+        description="Prepare project demo",
+    )
+
+    action_item_repository.mark_done(action_item_id)
+    item = action_item_repository.list_for_meeting(meeting_id)[0]
+    assert item.status == "done"
+
+    action_item_repository.verify(action_item_id)
+    item = action_item_repository.list_for_meeting(meeting_id)[0]
+    assert item.status == "verified"
+
+    action_item_repository.reopen(action_item_id)
+    item = action_item_repository.list_for_meeting(meeting_id)[0]
+    assert item.status == "open"
