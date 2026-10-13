@@ -89,9 +89,14 @@ class GeminiActionItemExtractor:
         client: genai.Client | None = None,
         model: str = "gemini-3.5-flash-lite",
     ) -> None:
-        self.client = client or genai.Client(
-            api_key=os.environ.get("GEMINI_API_KEY"),
-        )
+        api_key = os.environ.get("GEMINI_API_KEY")
+
+        if client is None and not api_key:
+            raise ValueError(
+                "GEMINI_API_KEY is required when using the Gemini extractor"
+            )
+
+        self.client = client or genai.Client(api_key=api_key)
         self.model = model
 
     def extract_action_items(
