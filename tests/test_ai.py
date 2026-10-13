@@ -146,3 +146,16 @@ def test_meeting_service_generates_meeting_summary(tmp_path) -> None:
     summary = service.generate_meeting_summary(meeting_id)
 
     assert "meeting" in summary.lower()
+
+
+def test_gemini_extractor_requires_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    try:
+        GeminiActionItemExtractor(model="test-model")
+    except ValueError as error:
+        assert str(error) == (
+            "GEMINI_API_KEY is required when using the Gemini extractor"
+        )
+    else:
+        raise AssertionError("Expected ValueError when GEMINI_API_KEY is missing")
