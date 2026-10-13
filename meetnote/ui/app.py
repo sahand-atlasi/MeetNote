@@ -56,6 +56,7 @@ class MeetingScreen(Screen):
         self.is_shutting_down = False
         self.transcription_future: Future[str] | None = None
         self.extraction_future: Future[int] | None = None
+        self.summary_future: Future[str] | None = None
         data_directory = Path("data")
         data_directory.mkdir(parents=True, exist_ok=True)
 
@@ -87,6 +88,17 @@ class MeetingScreen(Screen):
             size_hint_y=None,
             height=120,
         )
+
+        self.meeting_summary_label = Label(
+            text="No meeting summary available",
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+            height=150,
+        )
+        self.meeting_summary_label.bind(
+            width=self._update_meeting_summary_text_size,
+        )
         self.transcript_label.bind(
             width=self._update_transcript_text_size,
         )
@@ -112,6 +124,13 @@ class MeetingScreen(Screen):
             height=50,
         )
         extract_button.bind(on_press=self.extract_action_items)
+
+        summary_button = Button(
+            text="Generate meeting summary",
+            size_hint_y=None,
+            height=50,
+        )
+        summary_button.bind(on_press=self.generate_meeting_summary)
 
         refresh_button = Button(
             text="Refresh action items",
@@ -161,6 +180,8 @@ class MeetingScreen(Screen):
         layout.add_widget(refresh_button)
         layout.add_widget(kanban_button)
         layout.add_widget(self.transcript_label)
+        layout.add_widget(summary_button)
+        layout.add_widget(self.meeting_summary_label)
         layout.add_widget(self.action_items_label)
         layout.add_widget(self.status_label)
 
@@ -428,8 +449,72 @@ class MeetingScreen(Screen):
             self.transcription_future.cancel()
         if self.extraction_future is not None:
             self.extraction_future.cancel()
+        if self.summary_future is not None:
+            self.summary_future.cancel()
 
         self.executor.shutdown(wait=False, cancel_futures=True)
+
+    def _update_meeting_summary_text_size(
+        self,
+        label: Label,
+        width: float,
+    ) -> None:
+        label.text_size = (width, None)
+
+    def generate_meeting_summary(self, _button: Button) -> None:
+        if self.current_meeting_id is None:
+            self.meeting_summary_label.text = (
+                "Submit a meeting before generating a summary"
+            )
+            return
+
+        if (
+            self.transcription_future is not None
+            and not self.transcription_future.done()
+        ):
+            self.status_label.text = "Status: transcription is still in progress"
+            return
+
+        if self.summary_future is not None and not self.summary_future.done():
+            self.status_label.text = "Status: summary already in progress"
+            return
+
+        meeting_id = self.current_meeting_id
+        self.status_label.text = "Status: generating meeting summary..."
+        self.meeting_summary_label.text = "Generating summary..."
+
+        self.summary_future = self.executor.submit(
+            self.meeting_service.generate_meeting_summary,
+            meeting_id,
+        )
+        self.summary_future.add_done_callback(
+            self._summary_finished,
+        )
+
+    def _summary_finished(self, future: Future[str]) -> None:
+        if self.is_shutting_down:
+            return
+
+        Clock.schedule_once(
+            lambda _dt: self._show_meeting_summary(future),
+        )
+
+    def _show_meeting_summary_result(
+        self,
+        future: Future[str],
+    ) -> None:
+        if self.is_shutting_down:
+            return
+
+        try:
+            summary = future.result()
+        except Exception as error:
+            self.status_label.text = f"Status: summary failed: {error}"
+            self.meeting_summary_label.text = "Could not generate summary"
+            return
+
+        self.meeting_summary_label.text = summary
+        self.status_label.text = "Status: meeting summary generated"
 
 
 class KanbanScreen(Screen):

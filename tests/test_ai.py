@@ -1,14 +1,15 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from meetnote.application.services import MeetingService
+from meetnote.domain.models import Meeting
 from meetnote.application.ai import (
     ActionItemOutput,
     ActionItemsOutput,
     FakeActionItemExtractor,
     GeminiActionItemExtractor,
+    MeetingSummaryOutput,
 )
-from meetnote.application.services import MeetingService
-from meetnote.domain.models import Meeting
 
 
 def test_gemini_action_item_extractor_returns_parsed_items() -> None:
@@ -101,3 +102,47 @@ def test_meeting_service_rejects_unknown_meeting(tmp_path) -> None:
         assert str(error) == "Meeting 999 does not exist"
     else:
         raise AssertionError("Expected ValueError for unknown meeting")
+
+
+def test_gemini_extractor_generates_meeting_summary() -> None:
+    meeting = Meeting(
+        id=1,
+        title="Weekly meeting",
+        notes="Discussed project progress.",
+        transcript="Sahand will review the recording.",
+        created_at="2026-10-08T12:00:00+00:00",
+    )
+
+    parsed_output = MeetingSummaryOutput(
+        summary="Sahand will review the meeting recording.",
+    )
+
+    response = SimpleNamespace(
+        text=parsed_output.model_dump_json(),
+    )
+
+    client = MagicMock()
+    client.models.generate_content.return_value = response
+
+    extractor = GeminiActionItemExtractor(
+        client=client,
+        model="test-model",
+    )
+
+    summary = extractor.generate_meeting_summary(meeting)
+
+    assert summary == "Sahand will review the meeting recording."
+    client.models.generate_content.assert_called_once()
+
+
+def test_meeting_service_generates_meeting_summary(tmp_path) -> None:
+    service = MeetingService(
+        database_path=tmp_path / "meetnote.db",
+        action_item_extractor=FakeActionItemExtractor(),
+    )
+
+    meeting_id = service.create_meeting("Weekly meeting")
+
+    summary = service.generate_meeting_summary(meeting_id)
+
+    assert "meeting" in summary.lower()
