@@ -133,3 +133,11 @@ class MeetingService:
 
     def delete_action_item(self, action_item_id: int) -> None:
         self.action_items.delete(action_item_id)
+
+    def generate_meeting_summary(self, meeting_id: int) -> str:
+        meeting = self.meetings.get(meeting_id)
+
+        if meeting is None:
+            raise ValueError(f"Meeting {meeting_id} does not exist")
+
+        return self.action_item_extractor.generate_meeting_summary(meeting)
