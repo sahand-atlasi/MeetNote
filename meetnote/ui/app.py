@@ -496,7 +496,7 @@ class MeetingScreen(Screen):
             return
 
         Clock.schedule_once(
-            lambda _dt: self._show_meeting_summary(future),
+            lambda _dt: self._show_meeting_summary_result(future),
         )
 
     def _show_meeting_summary_result(
