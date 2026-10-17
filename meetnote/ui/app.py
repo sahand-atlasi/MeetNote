@@ -725,12 +725,12 @@ class KanbanScreen(Screen):
         )
 
     def go_back_to_meeting(self, _button: Button) -> None:
-                manager = self.parent
-        
-                if not isinstance(manager, ScreenManager):
-                    return
-        
-                manager.current = "meeting"
+        manager = self.parent
+
+        if not isinstance(manager, ScreenManager):
+            return
+
+        manager.current = "meeting"
 
     def _update_item_text_size(
         self,
