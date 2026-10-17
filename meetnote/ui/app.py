@@ -580,11 +580,18 @@ class KanbanScreen(Screen):
         )
         refresh_button.bind(on_press=self.refresh_board)
 
+        back_button = Button(
+            text="Back to meeting",
+            size_hint_y=None,
+            height=50,
+        )
+        back_button.bind(on_press=self.go_back_to_meeting)
+
         layout.add_widget(self.title_label)
         layout.add_widget(board_scroll)
         layout.add_widget(self.deadlines_label)
         layout.add_widget(refresh_button)
-
+        layout.add_widget(back_button)
         self.add_widget(layout)
 
     def _create_column(self, title: str) -> BoxLayout:
@@ -716,6 +723,14 @@ class KanbanScreen(Screen):
             f"Open: {open_count} | Done: {done_count} | "
             f"Verified: {verified_count}"
         )
+
+    def go_back_to_meeting(self, _button: Button) -> None:
+        manager = self.parent
+
+        if not isinstance(manager, ScreenManager):
+            return
+
+        manager.current = "meeting"
 
     def _update_item_text_size(
         self,
